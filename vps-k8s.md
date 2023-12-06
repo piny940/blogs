@@ -42,7 +42,7 @@ $ kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/co
 
 ## MetalLBをインストール
 次に[MetalLB](https://metallb.universe.tf)をインストールします。
-これは何かと言うと、AWS等のクラウドが提供しているk8sサービス(EKSとか)は`type=LoadBalancer`であるServiceに対して外からアクセスする仕組みを提供してくれているのですが、VPSやオンプレミスのサーバーではその仕組みが存在しないため、代わりにサービスを外部に公開する仕組みを提供してくれるものです。
+これは何かと言うと、AWS等のクラウドが提供しているk8sサービス(EKSとか)は`type=LoadBalancer`であるServiceに対して外からアクセスする仕組みを提供してくれているのですが、VPSやオンプレミスのサーバーではその仕組みが存在しないため、代わりにServiceを外部に公開する仕組みを提供してくれるものです。
 MetalLBについての詳しい説明はこのサイトが分かりやすかったです。
 https://blog.framinal.life/entry/2020/04/16/022042
 
@@ -96,6 +96,18 @@ metadata:
 spec:
   ipAddressPools:
     - default
+```
+`kustomization.yaml`でこの設定ファイルをresourcesに追加しておきます。
+```metallb/kustomization.yaml
+namespace: metallb-system
+
+resources:
+  - github.com/metallb/metallb/config/native?ref=v0.13.12
+  - config.yaml
+```
+最後に`kubectl apply`します。
+```
+$ kubectl apply -k metallb
 ```
 
 ## Next.jsのデプロイ
