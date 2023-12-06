@@ -1,7 +1,7 @@
 ## はじめに
 最近、VPS上で公開していた[ポートフォリオ](https://www.piny940.com)や[歌枠データベース](https://song-list.piny940.com)をDocker上で立てられるようにし、自宅サーバーへと完全移行しました。
 
-(自宅サーバーへサーバーを移行した話は周りはこの辺りの記事にまとめました。)
+(自宅サーバーへサーバーを移行した話はこの辺りの記事にまとめました。)
 
 https://qiita.com/piny940/items/606a6b03c390c136c1f7
 
@@ -170,6 +170,19 @@ nextのアプリにアクセスするには次のようにホスト名を指定�
 ```
 $ curl {表示されたIPアドレス} -H 'Host: hello-world.info'
 ```
+
+## kustomization.yamlを作成
+前章でNext + nginxのサーバーは立てられたのですが、マニフェストファイルがいくつもあると管理が大変になるため、kustomizeを導入することにします。
+```kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: default
+resources:
+  - deployment.yaml
+  - service.yaml
+  - ingress-nginx.yaml
+```
+これで環境が変わっても`kubectl apply -k .`とするだけでマニフェストの適用が完了します。
 
 ## 最後に
 今回はminikube上でNextサーバーをnginxを通してアクセスできるようにしました。次回は今回作ったものをVPS上で再現していきたいと思います。
