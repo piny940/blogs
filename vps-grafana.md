@@ -1,5 +1,31 @@
+## はじめに
+最近、VPS上で公開していた[ポートフォリオ](https://www.piny940.com)や[歌枠データベース](https://song-list.piny940.com)をDocker上で立てられるようにし、自宅サーバーへと完全移行しました。
+
+(自宅サーバーへサーバーを移行した話はこの辺りの記事にまとめました。)
+
+https://qiita.com/piny940/items/606a6b03c390c136c1f7
+
+https://qiita.com/piny940/items/e41c2709692195f823b5
+
+https://qiita.com/piny940/items/602316d913938db01c81
+
+しかし、自宅サーバーは諸々の理由で頻繁に電源が落ちるため、kubernetesを使って冗長構成にしたいと思うようになりました。また、毎回sshでログインしてデプロイをするのが手間だったので自動デプロイの基盤をkubernetesで作りたいと思うようになり、意を決してkubernetesのお勉強を始めました！
+
+今回はその工程の１つとして、VPSで立てたクラスタ上でGrafanaを動かしてみました。
+
+## 環境
+- lemon: Kagoya Cloud VPS 2コア 2GB
+- lime: Kagoya Cloud VPS 2コア 2GB
+
+（lemonやlimeはマシン名です）
+
+- デプロイツール: kubeadm
+- CRI: cri-dockerd
+- CNI: Weave net
+
 ## Helmをインストール
-[ドキュメント](https://helm.sh/docs/intro/install/)
+Helmがまだ入っていなかったので、[ドキュメント](https://helm.sh/docs/intro/install/)に従いインストールしました。
+
 Ubuntu用↓
 ```
 curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
@@ -10,7 +36,7 @@ sudo apt-get install helm
 ```
 
 ## Prometheusをインストール
-helm-chartsからインストール(https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus#configuration )
+[helm-charts](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus#configuration)からインストールします。
 
 レポジトリを追加
 ```
@@ -90,12 +116,13 @@ longhorn-replica-manager      ClusterIP   None             <none>        <none> 
 ```
 
 ## Grafanaをインストール
+レポジトリを追加。
 ```
 helm repo add grafana https://grafana.github.io/helm-charts
 helm repo update
 ```
 
-設定ファイルを記述
+設定ファイルを記述します。datasourceに先程導入したprometheusを指定しています。また、データの永続化のためにpersistenceを設定し、storageClassNameには先程導入したlonghornを指定します。
 ```grafana/helm-values.yaml
 datasources:
   datasources.yaml:
@@ -114,6 +141,10 @@ persistence:
 ```
 helm install -n grafana grafana grafana/grafana -f grafana/helm-values.yaml
 ```
+
+Grafanaのコンソールにログインするのに必要なパスワードを取得するコマンドが表示されますのでパスワードを取得してメモっておきましょう。
+
+## Ingressをインストール
 
 外部からgrafanaのコンソールにアクセスできるようにするために、ingressを設定します。
 ingressには[ingress-nginx](https://kubernetes.github.io/ingress-nginx/deploy/#quick-start)を使用します。
@@ -154,6 +185,8 @@ NAME              CLASS   HOSTS                 ADDRESS         PORTS   AGE
 grafana-ingress   nginx   grafana.example.com   192.168.11.61   80      4m4s
 ```
 
+## 最後に
+今回はGrafanaを導入してクラスタを監視する基盤を整えました。しかし現時点ではGrafanaのコンソールにログインしてもdashboardに何も設定がされていない状態です。次回はGrafanaのdashboardの設定を進めていこと思います。
 
 ## 参考資料
 
@@ -172,3 +205,5 @@ https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus#
 https://light-of-moe.ddo.jp/~sakura/diary/?p=1575
 
 https://kubernetes.io/ja/docs/concepts/storage/persistent-volumes
+
+https://qiita.com/MetricFire/items/cc9fe9741288048f4588
