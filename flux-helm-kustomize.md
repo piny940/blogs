@@ -1,5 +1,5 @@
 ## はじめに
-この記事は「お家Kubernetes環境を作ろう」シリーズの1つです。前回はfluxを使って自動デプロイ基盤を整えました。
+この記事は「お家kubernetes環境を作ろう」シリーズの1つです。前回はfluxを使って自動デプロイ基盤を整えました。
 
 https://qiita.com/piny940/items/536123b1c4b1884180fe
 
@@ -18,7 +18,7 @@ lemonおよびlimeはマシン名です。VPS2台のクラスタで動かして�
 - CNI: Weave Net
 
 ## 前提条件
-- Kubernetesクラスタが動作している
+- kubernetesクラスタが動作している
 - fluxがインストールされている
 
 ## kustomizationの設定
@@ -42,11 +42,11 @@ spec:
 
 この変更をmainにpushするとアプリの`kustomization.yaml`が自動で適用されます。
 
-## helm releaseの設定
-今回は[ingress-nginx](https://github.com/kubernetes/ingress-nginx)をインストールする想定で設定を書いていきます。
+## Helm Releaseの設定
+今回は[ingress-nginx](https://github.com/kubernetes/ingress-nginx)をインストールするための設定を例に示します。
 
-`ingress-nginx/helm.yaml`↓
-```ingress-nginx/helm.yaml
+`ingress-nginx/helm.yaml`:
+```yaml
 apiVersion: source.toolkit.fluxcd.io/v1beta2
 kind: HelmRepository
 metadata:
@@ -68,10 +68,11 @@ spec:
         kind: HelmRepository
         name: ingress-nginx
 ```
-HelmRepositoryでingress-nginxのchartレポジトリを指定し、HelmReleaseでリリースを定義します。
 
-`ingress-nginx/kustomization.yaml`↓
-```
+HelmRepositoryではingress-nginxのchartレポジトリを指定し、HelmReleaseではリリースを定義しています。
+
+`ingress-nginx/kustomization.yaml`:
+```yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: ingress-nginx
@@ -79,8 +80,8 @@ resources:
   - helm.yaml
 ```
 
-`flux/kustomizations/ingress-nginx.yaml`↓
-```
+`flux/kustomizations/ingress-nginx.yaml`:
+```yaml
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -95,7 +96,8 @@ spec:
     name: flux-system
     namespace: flux-system
 ```
-この変更をmainにpushするとingress-nginxがインストールされます。
+
+これらの変更をmainにpushすると、ingress-nginxがインストールされます。
 
 ## 最後に
 今回はfluxを用いてhelmやkustomizeを自動で適用できるようにしました。次回はDockerイメージのpushも自動でできるよう基盤を整えていきたいと思います。
