@@ -1,12 +1,11 @@
 ## はじめに
-この記事はお家kubernetes環境を作ろうシリーズの1つです。
-前回はGrafana + Prometheusを導入してクラスタ監視基盤を整備しました。
+この記事は「お家Kubernetes環境を作ろう」シリーズの1つです。前回はGrafana + Prometheusを導入してクラスタ監視基盤を整備しました。
 
 https://qiita.com/piny940/items/831d386919ec8a81dae2
 
 今回はfluxを導入して自動デプロイ基盤を整えていこうと思います。
 
-完成品はこちらのレポジトリで公開しています。
+完成品はこちらのリポジトリで公開しています。
 https://github.com/piny940/infra
 
 :::note warn
@@ -14,39 +13,39 @@ https://github.com/piny940/infra
 :::
 
 ## 環境
-lemonやlimeはマシン名です。VPS2台のクラスタで動かしています。
+lemonおよびlimeはマシン名です。VPS2台のクラスタで動かしています。
 - lemon: Kagoya Cloud VPS 2コア 2GB
 - lime: Kagoya Cloud VPS 2コア 2GB
 
 - デプロイツール: kubeadm
 - CRI: cri-dockerd
-- CNI: Weave net
+- CNI: Weave Net
 
 ## 前提条件
-- 動くDocker ImageがDocker Hubにpushされている
-- kubernetesクラスタが動作している
+- 動作するDockerイメージがDocker Hubにプッシュされている
+- Kubernetesクラスタが動作している
 
-## fluxをインストール
-[ドキュメント](https://fluxcd.io/flux/installation/#install-the-flux-cli)に従ってインストールをしていきます。
-```
+## fluxのインストール
+[ドキュメント](https://fluxcd.io/flux/installation/#install-the-flux-cli)に従ってインストールを行います。
+```bash
 curl -s https://fluxcd.io/install.sh | sudo bash
 ```
 
 タブ補完が使えるようにします。
-```
+```bash
 . <(flux completion bash)
 ```
 
-GithubのPersonal Access Tokenを作成します。
-参考: https://docs.github.com/ja/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
+GitHubのPersonal Access Tokenを作成します。
+参考: [個人用アクセス トークンを管理する](https://docs.github.com/ja/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
 
-トークンを環境変数に格納
-```
+トークンを環境変数に格納します。
+```bash
 $ export GITHUB_TOKEN=<gh-token>
 ```
 
-`flux bootstrap`を実行
-```
+次に、`flux bootstrap`コマンドを実行します。
+```bash
 $ flux bootstrap github \
   --token-auth \
   --owner=my-github-username \
@@ -56,22 +55,21 @@ $ flux bootstrap github \
   --personal
 ```
 
-これでGithubレポジトリの変更をfluxが自動検知してクラスタに適用してくれるはずです。
+これでGitHubリポジトリの変更をfluxが自動検知してクラスタに適用してくれるはずです。
 
-## イメージを自動更新できるようにする
-[ドキュメント](https://fluxcd.io/flux/guides/image-update/)に従い設定を行っていきます。
-こちらの記事がとても参考になりました。↓
+## イメージの自動更新設定
+[ドキュメント](https://fluxcd.io/flux/guides/image-update/)に従って設定を行います。以下の記事も参考になります。
 
 https://qiita.com/SNakano/items/bfa253eea2176854bea1
 
-トークンとGithubユーザー名を環境変数に設定
-```
+トークンとGitHubユーザー名を環境変数に設定します。
+```bash
 export GITHUB_TOKEN=<your-token>
 export GITHUB_USER=<your-username>
 ```
 
-flux bootstrapを再実行
-```
+次に、`flux bootstrap`を再実行します。
+```bash
 flux bootstrap github \
   --components-extra=image-reflector-controller,image-automation-controller \
   --owner=$GITHUB_USER \
@@ -82,12 +80,11 @@ flux bootstrap github \
   --personal
 ```
 
-次に`ImageRepository`と`ImagePolicy`を設定します。
-`ImageRepository`はビルドイメージを「どこから取ってくるか」を設定します。今回は練習のためDocker Hubを使う前提の設定を書きますが、ghcr.ioなどを使う場合はここの設定を変更します。
+その後、`ImageRepository`と`ImagePolicy`を設定します。`ImageRepository`はビルドイメージを「どこから取ってくるか」を設定します。この例では、Docker Hubを使用する前提の設定を記述していますが、ghcr.ioなどを使用する場合はこの設定を変更します。
 
-`ImagePolicy`は取ってきたイメージを「どう適用するか」を表しています。Dockerイメージについているタグ(v1.0.1とか)を見て使用するイメージをフィルタリングしたり、どのタグのイメージを最新のイメージとして扱うかを定義したりします。
+`ImagePolicy`は取得したイメージを「どう適用するか」を表します。Dockerイメージに付与されているタグ（例: v1.0.1など）を見て、使用するイメージをフィルタリングしたり、どのタグのイメージを最新のイメージとして扱うかを定義したりします。
 
-これらの設定はアプリケーションごとに設定をします。
+これらの設定はアプリケーションごとに構成します。
 
 ImageRepository↓
 ```hello-node/image-repository.yaml
@@ -100,7 +97,7 @@ spec:
   image: {DockerHubアカウント名}/hello-node
   interval: 1m0s
 ```
-DockerHubを使用する場合、imageは`{DockerHubアカウント名}/hello-node`の形で書きます。
+Docker Hubを使用する場合、imageは`{DockerHubアカウント名}/hello-node`の形で書きます。
 
 ImagePolicy↓
 ```hello-node/image-policy.yaml
@@ -166,7 +163,7 @@ $ flux create image update flux-system \
 --export > ./clusters/my-cluster/flux-system-automation.yaml
 ```
 
-これでイメージの変更を検知する準備は出来たのですが、最後に「変更を検知したらどの行を書き換えるのか」を指定する必要があります。
+これでイメージの変更を検知する準備はできたのですが、最後に「変更を検知したらどの行を書き換えるのか」を指定する必要があります。
 アプリの`deployment.yaml`の`spec.template.spec.containers[0].image`に次のようにマーキングをつけます。
 
 ```
