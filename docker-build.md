@@ -9,8 +9,10 @@ https://qiita.com/piny940/items/e99fea7fcba720047b11
 https://github.com/piny940/portfolio
 
 ## 権限の設定
-レポジトリの設定から、workflowに権限を与えます。
+レポジトリの設定から、ワークフローに権限を与えます。
+
 ![workflow permission](https://user-images.githubusercontent.com/1736354/187890839-2f26ce10-2e20-4d7e-ab6e-311c898fc416.png)
+
 ![actions permissions](https://user-images.githubusercontent.com/9700541/187891526-5938feb5-d380-4574-a81a-9b621779dead.png)
 
 参考: https://github.com/docker/build-push-action/issues/687
@@ -59,7 +61,6 @@ jobs:
 
 ## 最後に
 今回はGithub Actionsを用いて自動ビルドの基盤を整えました。次回はStaging環境の作成に挑戦したいと思います。
-
 
 ## 参考資料
 
