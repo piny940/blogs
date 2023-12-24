@@ -1,5 +1,22 @@
 https://developer.hashicorp.com/vault/tutorials/kubernetes/kubernetes-raft-deployment-guide
 
+```bash
+$ export SA_SECRET_NAME=$(kubectl get secrets -n vault --output=json | jq -r '.items[].metadata | select(.name|startswith("vault-auth-")).name')
+```
+
+```bash
+$ export SA_JWT_TOKEN=$(kubectl get secret -n vault $SA_SECRET_NAME --output 'go-template={{ .data.token }}' | base64 --decode)
+```
+
+```bash
+$ export SA_CA_CRT=$(kubectl config view --raw --minify --flatten \
+    --output 'jsonpath={.clusters[].cluster.certificate-authority-data}' | base64 --decode)
+```
+
+```bash
+$ export K8S_HOST=$(kubectl config view --raw --minify --flatten \
+    --output 'jsonpath={.clusters[].cluster.server}')
+```
 
 ## 参考資料
 
