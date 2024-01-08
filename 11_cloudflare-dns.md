@@ -22,6 +22,8 @@ A レコードが追加される際には、
 
 の 2 つをする必要があります。
 
+最後に`main.go`の Provider 一覧に`cloudflaretunnel`を追加すれば完成です。
+
 ## 実装
 
 実装は`cloudflaretunnel.go`に記述していきます。
