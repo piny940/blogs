@@ -143,7 +143,7 @@ spec:
 ```
 
 `production/`ディレクトリの中には通常通りに`deployment`と`service`と`kustomization`を記述します。  
-ただし、staging 環境の deployment 等と区別ができるように、`env: production`を `commonLabels` に追加します。
+ただし、staging 環境の deployment 等と区別ができるように、`env: production`を`kustomization`の`commonLabels` に追加します。  
 ↓`app/production/kustomization.yaml`
 
 ```yaml
@@ -157,7 +157,9 @@ resources:
   - service.yaml
 ```
 
-`staging/`ディレクトリの`kustomization`からは`production`のマニフェストを見に行き、image や label などを上書きします。
+`staging/`ディレクトリの`kustomization`からは`production`のマニフェストを見に行き、image や label などを上書きします。  
+参考: https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/
+
 ↓`app/staging/kustomization.yaml`
 
 ```yaml
@@ -179,8 +181,7 @@ resources:
   - ../production
 ```
 
-重要な点について解説していきます。  
-参考: https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/
+重要な点について解説していきます。
 
 - nameSuffix  
   リソースの name の後ろに`-staging`を追加します。
@@ -195,3 +196,7 @@ resources:
 
 今回は kubernetes 上で staging 環境を作る作業をしました。kustomize の強みを活かして上手く production 環境と共通化ができたのではないかと思っています。(こうすればもっとキレイになる！などがあればぜひ教えてください！)
 次回は kubernetes 上で redis 環境を整えていきたいと思います。
+
+## 参考資料
+
+https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/
