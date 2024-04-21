@@ -151,6 +151,12 @@ velero install \
 velero schedule create backup-schedule --schedule="9 3 * * *"
 ```
 
+### 5. バックアップを手動で実行する
+
+```bash
+velero backup create --from-schedule backup-schedule
+```
+
 ## 参考資料
 
 https://qiita.com/ysakashita/items/3a0b2ad9ac37e2ce315a
