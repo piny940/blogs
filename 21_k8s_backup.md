@@ -123,7 +123,7 @@ gcloud iam service-accounts keys create credentials-velero \
 `gcloud`の設定をローカル PC で行った場合は、サーバーに`credentials-velero`をアップロードしてください。
 
 ```bash
-scp credentials-velero user@server:/path/to/credentials-velero
+scp credentials-velero user@server:/path/to/credentials-velero.json
 ```
 
 インストール方法には helm を使う方法と`velero install`を使う方法があります。`velero install`を使う方法は折りたたんで記しておきます。
@@ -145,7 +145,7 @@ velero install \
     --plugins=velero/velero-plugin-for-gcp:v1.6.0,velero/velero-plugin-for-csi:v0.7.0 \
     --provider gcp \
     --bucket $BUCKET \
-    --secret-file ./credentials-velero
+    --secret-file ./credentials-velero.json
 ```
 
 バックアップを次のコマンドでスケジュールします。
@@ -158,10 +158,16 @@ velero schedule create backup-schedule --schedule="9 3 * * *"
 
 helm を使う場合は以下のようにします。
 
-まず、サーバーにアップロードした鍵をもとに secret を作成します。
+まず、`velero`という名前の namespace を作成します。
 
 ```bash
+kubectl create namespace velero
+```
 
+サーバーにアップロードした鍵をもとに secret を作成します。
+
+```bash
+kubectl create secret generic google-credentials -n velero --from-file=gcp=./credentials-velero.json
 ```
 
 ### 4. バックアップを手動で実行する
