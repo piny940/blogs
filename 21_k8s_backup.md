@@ -126,37 +126,7 @@ gcloud iam service-accounts keys create credentials-velero \
 scp credentials-velero user@server:/path/to/credentials-velero.json
 ```
 
-インストール方法には helm を使う方法と`velero install`を使う方法があります。`velero install`を使う方法は折りたたんで記しておきます。
-
-<details>
-<summary>velero installを使う場合</summary>
-
-`BUCKET`の値をサーバーに設定してください。
-
-```bash
-BUCKET=<YOUR_BUCKET>
-```
-
-次のコマンドで Velero をインストールします。
-
-```bash
-velero install \
-    --features=EnableCSI \
-    --plugins=velero/velero-plugin-for-gcp:v1.6.0,velero/velero-plugin-for-csi:v0.7.0 \
-    --provider gcp \
-    --bucket $BUCKET \
-    --secret-file ./credentials-velero.json
-```
-
-バックアップを次のコマンドでスケジュールします。
-
-```bash
-velero schedule create backup-schedule --schedule="9 3 * * *"
-```
-
-</details>
-
-helm を使う場合は以下のようにします。
+インストール方法には helm を使う方法と`velero install`を使う方法があります。今回は Helm を使う方法を紹介します。
 
 まず、`velero`という名前の namespace を作成します。
 
@@ -170,13 +140,107 @@ kubectl create namespace velero
 kubectl create secret generic google-credentials -n velero --from-file=gcp=./credentials-velero.json
 ```
 
+Helm 用の`values.yaml`を作成します。
+
+ポイントは次の 5 点です。
+
+1. `initContainers`に`velero-plugin-for-csi`と`velero-plugin-for-gcp`を追加
+1. `configuration.features`に`EnableCSI`を追加
+1. `nodeAgent`を設定・`deployNodeAgent`を`true`にする
+1. `schedules`で`snapshotVolume`を`true`にする
+1. `defaultSnapshotMoveData: true`を指定する
+
+これによってボリュームのスナップショットもバックアップされるようになります。
+
+```yaml
+image:
+  repository: velero/velero
+  tag: v1.13.0
+  pullPolicy: IfNotPresent
+resources:
+  requests:
+    cpu: 500m
+    memory: 128Mi
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+initContainers:
+  - name: velero-plugin-for-csi
+    image: velero/velero-plugin-for-csi:v0.7.1
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+      - mountPath: /target
+        name: plugins
+  - name: velero-plugin-for-gcp
+    image: velero/velero-plugin-for-gcp:v1.9.1
+    volumeMounts:
+      - mountPath: /target
+        name: plugins
+configuration:
+  backupStorageLocation:
+    - name: default
+      provider: velero.io/gcp
+      bucket: velero-piny940
+      credential:
+        name: google-credentials
+        key: gcp
+  volumeSnapshotLocation:
+    - name: default
+      provider: velero.io/gcp
+      credential:
+        name: google-credentials
+        key: gcp
+  features: EnableCSI
+  defaultSnapshotMoveData: true
+deployNodeAgent: true
+nodeAgent:
+  podVolumePath: /var/lib/kubelet/pods
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+schedules:
+  backup-daily:
+    disabled: false
+    schedule: "48 3 * * *"
+    template:
+      labels:
+        app: velero-backup-daily
+      snapshotVolumes: true
+```
+
+```bash
+helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts
+helm install velero vmware-tanzu/velero --namespace velero --values velero/values.yaml
+```
+
 ### 4. バックアップを手動で実行する
+
+velero のインストールが完了したら、正常にバックアップを作成できるかチェックします。
 
 ```bash
 velero backup create --from-schedule backup-schedule
 ```
 
-## 起きた問題
+### 5. バックアップのリストア
+
+バックアップをリストアするには、`velero restore`コマンドを使います。
+
+```bash
+velero restore create --from-backup backup-20240422112304
+```
+
+上手く行けば、バックアップがリストアされます。
+
+## 最後に
+
+今回は Velero を使ってクラスタのバックアップを取る方法を紹介しました。
+これでサーバーが壊れても安心です！
+次回は kubernetes のログ周りをいい感じに整えたいと思います。
+
+## 付録
+
+### エラー対応
 
 バックアップを作成しようとしたら、`VolumeSnapshotClass`が見つからないというエラーが発生しました。
 
