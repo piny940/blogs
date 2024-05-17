@@ -1,42 +1,39 @@
+## はじめに
+
+本記事では Kubernetes クラスタのバックアップを取る方法を紹介します。
+
+普段運用している Kubernetes クラスタでは fluxCD を使用しているため、単にオブジェクトを復元するだけであれば fluxCD の機能を使えばよかったのですが、Volume のバックアップも取りたいという要望があったため、バックアップツールを導入することにしました。
+
 ## 技術選定
 
-条件:
+使用するツールの条件として以下のようなものを考えました。
 
 - 定期的に自動でバックアップがされる
 - PV (PVC)もバックアップできる
 - リストアが 1~2 個のコマンドで手軽にできる
-- GCS に対応(S3 は無料枠が 1 年しかないため GCS を使いたい)
 - メンテナンスがされていて、ドキュメントが豊富
 
-候補:
+これを踏まえて次の 3 つを候補として考えました。
 
 - [Velero](https://github.com/vmware-tanzu/velero)
-- longhorn で PV のみバックアップ
+- longhorn によるバックアップ
 - [kube-backup](https://github.com/pieterlange/kube-backup)
 
-Velero:
+| ツール      | メリット                                                                                                          | デメリット                                                                                                                         |
+| ----------- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Velero      | Test 用のクラスタに使い回せる<br>バックアップスケジューラ内包                                                     | flux を入れてるのに k8s オブジェクトまで Backup ツールで復元する必要ことになってちょっと微妙(それは他のツールでも同じ？)           |
+| longhorn    | すでにストレージに使っている longhorn をそのまま使える<br/>友人が longhorn でバックアップを取っていて参考にできる | 別のストレージサービスを使うことになった場合別途バックアップをする必要がある(?)<br/>バックアップとストレージは疎結合にしておきたい |
+| kube-backup |                                                                                                                   | メンテナンスが 5 年前からされていない                                                                                              |
 
-- Test 用のクラスタに使い回せる
-- バックアップスケジューラ内包
-
-flux を入れてるから k8s オブジェクトまで Backup ツールで復元する必要があるかは微妙
-
-Longhorn:
-
-- すでに使ってるリソースをそのまま使える
-- 手順が複雑 volume 名が変わると PVC に対する PV 名が変わるから対応付けが難しい
-
-kube-backup:
-
-- メンテナンスが 5 年前からされていない
+今後 longhorn 以外のストレージサービスを使う可能性もあるため、今回は Velero を選択しました。
 
 ## 手順
 
 ### 1. CLI のインストール
 
-https://velero.io/docs/v1.13/basic-install/
+参考: https://velero.io/docs/v1.13/basic-install/
 
-```
+```bash
 wget https://github.com/vmware-tanzu/velero/releases/download/v1.13.0/velero-v1.13.0-linux-amd64.tar.gz
 tar -xvf velero-v1.13.0-linux-amd64.tar.gz
 sudo mv velero-v1.13.0-linux-amd64/velero /usr/local/bin
@@ -51,11 +48,11 @@ velero completion bash | sudo tee /etc/bash_completion.d/velero
 
 このセクションの操作はローカル PC で行って問題ありません。最後にダウンロードしたファイルをサーバーにアップロードするのを忘れないようにしてください。
 
-https://github.com/vmware-tanzu/velero-plugin-for-gcp?tab=readme-ov-file#Set-permissions-for-Velero
+参考: https://github.com/vmware-tanzu/velero-plugin-for-gcp?tab=readme-ov-file#Set-permissions-for-Velero
 
 `gcloud CLI`を使って認証情報を設定するため、 ローカルマシンに`gcloud`がインストールされていない場合は[インストール](https://cloud.google.com/sdk/docs/install?hl=ja)・[初期化](https://cloud.google.com/sdk/docs/initializing?hl=ja)を行います。
 
-まず、GCS のバケットを作成します。
+GCS のバケットを作成:
 
 ```bash
 BUCKET=<YOUR_BUCKET>
@@ -63,7 +60,7 @@ BUCKET=<YOUR_BUCKET>
 gsutil mb gs://$BUCKET/
 ```
 
-次に、GCP のサービスアカウントを作成します。
+GCP のサービスアカウントを作成:  
 次のコマンドで`velero`という名前のサービスアカウントを作成します。
 
 ```bash
@@ -75,7 +72,7 @@ gcloud iam service-accounts create $GSA_NAME \
 
 `gcloud iam service-accounts list`で作成したサービスアカウントを確認できるはずです。
 
-次に、サービスアカウントに必要な権限を付与します。
+サービスアカウントに必要な権限を付与:
 
 ```bash
 SERVICE_ACCOUNT_EMAIL=$(gcloud iam service-accounts list \
@@ -110,8 +107,8 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 gsutil iam ch serviceAccount:$SERVICE_ACCOUNT_EMAIL:objectAdmin gs://${BUCKET}
 ```
 
-最後にサービスアカウントの鍵を作成してダウンロードします。
-次のコマンドを実行すると`credentials-velero`という名前のファイルがダウンロードされます。
+サービスアカウントの鍵を作成してダウンロード:  
+`credentials-velero`という名前のファイルがダウンロードされます。
 
 ```bash
 gcloud iam service-accounts keys create credentials-velero \
@@ -120,27 +117,27 @@ gcloud iam service-accounts keys create credentials-velero \
 
 ### 3. Velero server のインストール
 
-`gcloud`の設定をローカル PC で行った場合は、サーバーに`credentials-velero`をアップロードしてください。
+`gcloud`の設定をローカル PC で行った場合は、サーバーに`credentials-velero`をアップロードします。
 
 ```bash
 scp credentials-velero user@server:/path/to/credentials-velero.json
 ```
 
-インストール方法には helm を使う方法と`velero install`を使う方法があります。今回は Helm を使う方法を紹介します。
+インストール方法には helm を使う方法と`velero install`を使う方法があります。今回は Helm を使う方法をとりました。
 
-まず、`velero`という名前の namespace を作成します。
+`velero`という名前の namespace を作成:
 
 ```bash
 kubectl create namespace velero
 ```
 
-サーバーにアップロードした鍵をもとに secret を作成します。
+サーバーにアップロードした鍵をもとに secret を作成:
 
 ```bash
 kubectl create secret generic google-credentials -n velero --from-file=gcp=./credentials-velero.json
 ```
 
-Helm 用の`values.yaml`を作成します。
+Helm 用の`values.yaml`を作成:
 
 ポイントは次の 5 点です。
 
@@ -227,7 +224,7 @@ velero backup create --from-schedule backup-schedule
 バックアップをリストアするには、`velero restore`コマンドを使います。
 
 ```bash
-velero restore create --from-backup backup-20240422112304
+velero restore create --from-backup <backup-name>
 ```
 
 上手く行けば、バックアップがリストアされます。
