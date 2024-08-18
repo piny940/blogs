@@ -21,7 +21,7 @@ https://qiita.com/piny940/items/d47653982670fc10c1c5
 
 まず、Alertmanager の設定ファイルを記述します。
 
-`alertname`が`Watchdog`の alert は、alertmanager が正常に動作しているかを監視するためのアラートなので、slack には流さないように設定しておきます。
+`alertname`が`Watchdog`の alert は、alertmanager が正常に動作しているかを監視するためのアラートなので、slack には流さないように設定しておきます。(参考：https://prometheus.io/docs/alerting/latest/configuration/)
 
 ```yaml
 apiVersion: monitoring.coreos.com/v1alpha1
@@ -148,3 +148,5 @@ https://github.com/prometheus-operator/prometheus-operator
 https://samber.github.io/awesome-prometheus-alerts/rules.html#rule-kubernetes-1-18
 
 https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
+
+https://prometheus.io/docs/alerting/latest/alertmanager/
