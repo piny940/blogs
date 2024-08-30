@@ -10,9 +10,9 @@
 
 実装しないといけないのは主に次の 4 つです。
 
-- Flux Alert
 - ステージング環境の Helm
 - 本番環境の Helm
+- Flux Alert
 - GitHub Action
 
 ### ステージング環境の Helm
